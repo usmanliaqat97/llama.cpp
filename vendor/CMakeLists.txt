@@ -8,5 +8,6 @@ add_subdirectory(stb)
 # only used by common
 if (LLAMA_BUILD_COMMON)
     add_subdirectory(ankerl)
+    add_subdirectory(constmap)
     add_subdirectory(cpp-httplib)
 endif()

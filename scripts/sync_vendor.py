@@ -14,6 +14,9 @@ SHA1_COMMIT        = "e1e2536fcf6a8f9703be8c85d58724b408552287"
 SHA256_COMMIT      = "5e637272c13f200872d55ff579f7e2ab6c3f252f"
 ROTATE_BITS_COMMIT = "27e784942f67db44abf2115c6638e735b579acd1"
 
+# used by the static ngram cache in common/ngram-cache.cpp
+FASTCONSTMAP_COMMIT = "990afd04148949300dc00b2206b63af9374c6334"
+
 vendor = {
     "https://github.com/nlohmann/json/releases/latest/download/json.hpp":     "vendor/nlohmann/json.hpp",
     "https://github.com/nlohmann/json/releases/latest/download/json_fwd.hpp": "vendor/nlohmann/json_fwd.hpp",
@@ -48,6 +51,12 @@ vendor = {
 
     f"https://raw.githubusercontent.com/jb55/rotate-bits.h/{ROTATE_BITS_COMMIT}/rotate-bits.h": "vendor/hash/rotate-bits/rotate-bits.h",
     f"https://raw.githubusercontent.com/jb55/rotate-bits.h/{ROTATE_BITS_COMMIT}/LICENSE.md":   "vendor/hash/rotate-bits/LICENSE.md",
+
+    f"https://raw.githubusercontent.com/lemire/fastconstmap/{FASTCONSTMAP_COMMIT}/src/constmap.c":                    "vendor/constmap/constmap.c",
+    f"https://raw.githubusercontent.com/lemire/fastconstmap/{FASTCONSTMAP_COMMIT}/src/constmap.h":                    "vendor/constmap/constmap.h",
+    f"https://raw.githubusercontent.com/lemire/fastconstmap/{FASTCONSTMAP_COMMIT}/LICENSE":                           "vendor/constmap/LICENSE",
+    f"https://raw.githubusercontent.com/lemire/fastconstmap/{FASTCONSTMAP_COMMIT}/src/third_party/xxhash/xxhash.h":   "vendor/constmap/third_party/xxhash/xxhash.h",
+    f"https://raw.githubusercontent.com/lemire/fastconstmap/{FASTCONSTMAP_COMMIT}/src/third_party/xxhash/LICENSE":    "vendor/constmap/third_party/xxhash/LICENSE",
 }
 
 # local changes kept on top of the upstream sources
