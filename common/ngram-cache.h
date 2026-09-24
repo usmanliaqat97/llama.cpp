@@ -4,6 +4,8 @@
 
 #include <ankerl/unordered_dense.h>
 
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -114,6 +116,32 @@ private:
 // A segmented map grows in fixed-size blocks, so loading a large cache never holds two copies of its entries.
 typedef ankerl::unordered_dense::segmented_map<common_ngram, common_ngram_cache_part, common_ngram_hash_function> common_ngram_cache;
 
+// token and number of times it has been seen, as stored in a static ngram cache
+typedef common_ngram_cache_part::value_type common_ngram_cache_static_entry;
+
+// the distribution of following tokens of one n-gram, sorted by token
+struct common_ngram_cache_static_part {
+    const common_ngram_cache_static_entry * entries = nullptr;
+    size_t                                  size    = 0;
+};
+
+struct fcm_verified_constmap;
+
+// Read-only ngram cache of LLAMA_NGRAM_STATIC-grams. A constmap
+// (https://github.com/lemire/fastconstmap) maps each n-gram to a span of one
+// contiguous entries array.
+struct common_ngram_cache_static {
+    std::vector<uint64_t>                   buffer;
+    const common_ngram_cache_static_entry * entries = nullptr;
+    std::unique_ptr<fcm_verified_constmap>  map;
+
+    common_ngram_cache_static();
+    ~common_ngram_cache_static();
+};
+
+// Look up the distribution of tokens following an n-gram. Returns an empty part if the n-gram is not in the cache.
+common_ngram_cache_static_part common_ngram_cache_static_find(const common_ngram_cache_static & nc_static, const common_ngram & ngram);
+
 
 // Update an ngram cache with tokens.
 // ngram_cache:         the cache to modify.
@@ -134,10 +162,10 @@ void common_ngram_cache_update(
 // ngram_min/gram_max: the min/max size of the ngrams in nc_context and nc_dynamic.
 // nc_context:         ngram cache based on current context.
 // nc_dynamic:         ngram cache based on previous user generations.
-// nc_static:          ngram cache generated from a large text corpus, used for validation.
+// nc_static:          ngram cache generated from a large text corpus, used for validation. May be null.
 void common_ngram_cache_draft(
     std::vector<llama_token> & inp, std::vector<llama_token> & draft, int n_draft, int ngram_min, int ngram_max,
-    common_ngram_cache & nc_context, common_ngram_cache & nc_dynamic, common_ngram_cache & nc_static);
+    common_ngram_cache & nc_context, common_ngram_cache & nc_dynamic, const common_ngram_cache_static * nc_static);
 
 // Save an ngram cache to a file.
 // ngram_cache: the ngram cache to save.
@@ -148,6 +176,16 @@ void common_ngram_cache_save(common_ngram_cache & ngram_cache, const std::string
 // filename: the path from which to load the ngram cache.
 // returns:  an ngram cache containing the information saved to filename.
 common_ngram_cache common_ngram_cache_load(const std::string & filename);
+
+// Save the LLAMA_NGRAM_STATIC-grams of an ngram cache as a static ngram cache file.
+// ngram_cache: the ngram cache to save.
+// filename:    the path under which to save the static ngram cache.
+void common_ngram_cache_static_save(const common_ngram_cache & ngram_cache, const std::string & filename);
+
+// Load a static ngram cache saved with common_ngram_cache_static_save.
+// filename: the path from which to load the static ngram cache.
+// returns:  a read-only static ngram cache, shareable between sequences.
+std::shared_ptr<const common_ngram_cache_static> common_ngram_cache_static_load(const std::string & filename);
 
 // Merge two ngram caches.
 // ngram_cache_target: the ngram cache to which to add the information from ngram_cache_add.

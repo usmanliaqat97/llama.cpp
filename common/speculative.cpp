@@ -2233,10 +2233,12 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
 
         common_ngram_cache ngram_cache_context;
         common_ngram_cache ngram_cache_dynamic;
-        common_ngram_cache ngram_cache_static;
     };
 
     std::vector<seq_info> sinfos;
+
+    // read-only, shared by all sequences
+    std::shared_ptr<const common_ngram_cache_static> ngram_cache_static;
 
     common_speculative_impl_ngram_cache(
             const common_params_speculative & params,
@@ -2262,11 +2264,7 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
 
         if (!path_static.empty()) {
             try {
-                auto ngram_cache_static = common_ngram_cache_load(path_static);
-
-                for (auto & sinfo : sinfos) {
-                    sinfo.ngram_cache_static = ngram_cache_static;
-                }
+                ngram_cache_static = common_ngram_cache_static_load(path_static);
             } catch (...) {
                 SPC_ERR("failed to open static lookup cache: %s", path_static.c_str());
                 GGML_ABORT("Couldn't read static lookup cache");
@@ -2328,7 +2326,7 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
                 inp, result, n_draft, LLAMA_NGRAM_MIN, LLAMA_NGRAM_MAX,
                 sinfo.ngram_cache_context,
                 sinfo.ngram_cache_dynamic,
-                sinfo.ngram_cache_static);
+                ngram_cache_static.get());
 
         if (result.size() > 0) {
             // delete first token in result (which is the id_last token)
