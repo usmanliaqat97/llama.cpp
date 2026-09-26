@@ -113,12 +113,24 @@ static llama_token try_draft(
         }
         const common_ngram_cache_part & part_primary = part_primary_it->second;
 
+        int sum_count_primary     = 0;
+        int largest_count_primary = 0;
+        for (const std::pair<llama_token, int32_t> & token_count_primary : part_primary) {
+            sum_count_primary    += token_count_primary.second;
+            largest_count_primary = std::max(largest_count_primary, token_count_primary.second);
+        }
+        if (sum_count_primary < min_sample_size[i]) {
+            continue;
+        }
+        if (100*largest_count_primary < min_percent[i]*sum_count_primary) {
+            continue;
+        }
+
         int max_count_primary = 0;
         int max_count_static  = 0;
-        int sum_count_primary = 0;
         llama_token max_token = LLAMA_TOKEN_NULL;
 
-        for (std::pair<llama_token, int> token_count_primary : part_primary) {
+        for (const std::pair<llama_token, int32_t> & token_count_primary : part_primary) {
             const llama_token token = token_count_primary.first;
 
             const int32_t token_count_static = static_count(part_static, token);
@@ -131,14 +143,10 @@ static llama_token try_draft(
                 max_count_primary = count_primary;
                 max_count_static  = count_static;
             }
-            sum_count_primary += count_primary;
         }
 
-        if (sum_count_primary < min_sample_size[i]) {
-            continue;
-        }
         if (100*max_count_primary < min_percent[i]*sum_count_primary) {
-            continue;;
+            continue;
         }
         drafted_token = max_token;
     }
