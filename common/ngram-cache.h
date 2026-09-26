@@ -4,7 +4,6 @@
 
 #include <ankerl/unordered_dense.h>
 
-#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -87,15 +86,27 @@ struct common_ngram_cache_part {
     size_t         size()  const { return entries.size(); }
     bool           empty() const { return entries.empty(); }
 
+    // fixed-length binary search variant of std::lower_bound
+    static size_t lower_bound(const value_type * pairs, size_t n, const llama_token token) {
+        if (n == 0) {
+            return 0;
+        }
+        const value_type * base = pairs;
+        while (n > 1) {
+            const size_t half = n / 2;
+            base = base[half].first < token ? base + half : base;
+            n -= half;
+        }
+        return (base - pairs) + (base->first < token);
+    }
+
 private:
     iterator lower_bound(const llama_token token) {
-        return std::lower_bound(entries.begin(), entries.end(), token,
-            [](const value_type & entry, const llama_token t) { return entry.first < t; });
+        return entries.begin() + lower_bound(entries.data(), entries.size(), token);
     }
 
     const_iterator lower_bound(const llama_token token) const {
-        return std::lower_bound(entries.begin(), entries.end(), token,
-            [](const value_type & entry, const llama_token t) { return entry.first < t; });
+        return entries.begin() + lower_bound(entries.data(), entries.size(), token);
     }
 };
 
