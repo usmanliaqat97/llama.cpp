@@ -6,6 +6,7 @@ import sys
 import subprocess
 
 HTTPLIB_VERSION = "refs/tags/v0.57.1"
+UNORDERED_DENSE_VERSION = "refs/tags/v5.0.1"
 
 # used by examples/gguf-hash, these repos have no release tag, so we pin a commit
 XXHASH_COMMIT      = "9f465f1ea932d6ad9a26cd77496311ffa544cd68"
@@ -26,6 +27,10 @@ vendor = {
     f"https://raw.githubusercontent.com/yhirose/cpp-httplib/{HTTPLIB_VERSION}/httplib.h": "httplib.h",
     f"https://raw.githubusercontent.com/yhirose/cpp-httplib/{HTTPLIB_VERSION}/split.py":  "split.py",
     f"https://raw.githubusercontent.com/yhirose/cpp-httplib/{HTTPLIB_VERSION}/LICENSE":   "vendor/cpp-httplib/LICENSE",
+
+    f"https://raw.githubusercontent.com/martinus/unordered_dense/{UNORDERED_DENSE_VERSION}/include/ankerl/unordered_dense.h": "vendor/ankerl/unordered_dense.h",
+    f"https://raw.githubusercontent.com/martinus/unordered_dense/{UNORDERED_DENSE_VERSION}/include/ankerl/stl.h":             "vendor/ankerl/stl.h",
+    f"https://raw.githubusercontent.com/martinus/unordered_dense/{UNORDERED_DENSE_VERSION}/LICENSE":                           "vendor/ankerl/LICENSE",
 
     "https://raw.githubusercontent.com/sheredom/subprocess.h/0dccaa9aa176dd6d7ef8afeca3c18d6e80a32795/subprocess.h": "vendor/sheredom/subprocess.h",
 
