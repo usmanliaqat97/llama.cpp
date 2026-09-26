@@ -4,8 +4,9 @@
 
 #include <ankerl/unordered_dense.h>
 
-#include <unordered_map>
+#include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #define LLAMA_NGRAM_MIN    1
@@ -57,7 +58,46 @@ struct common_ngram_hash_function {
 };
 
 // token -> number of times token has been seen
-typedef std::unordered_map<llama_token, int32_t> common_ngram_cache_part;
+struct common_ngram_cache_part {
+    typedef std::pair<llama_token, int32_t>          value_type;
+    typedef std::vector<value_type>::iterator       iterator;
+    typedef std::vector<value_type>::const_iterator const_iterator;
+
+    std::vector<value_type> entries;
+
+    iterator find(const llama_token token) {
+        const iterator it = lower_bound(token);
+        return it != entries.end() && it->first == token ? it : entries.end();
+    }
+
+    const_iterator find(const llama_token token) const {
+        const const_iterator it = lower_bound(token);
+        return it != entries.end() && it->first == token ? it : entries.end();
+    }
+
+    // Callers emplace a token only after find did not return it.
+    void emplace(const llama_token token, const int32_t count) {
+        entries.insert(lower_bound(token), value_type(token, count));
+    }
+
+    iterator       begin()       { return entries.begin(); }
+    iterator       end()         { return entries.end(); }
+    const_iterator begin() const { return entries.begin(); }
+    const_iterator end()   const { return entries.end(); }
+    size_t         size()  const { return entries.size(); }
+    bool           empty() const { return entries.empty(); }
+
+private:
+    iterator lower_bound(const llama_token token) {
+        return std::lower_bound(entries.begin(), entries.end(), token,
+            [](const value_type & entry, const llama_token t) { return entry.first < t; });
+    }
+
+    const_iterator lower_bound(const llama_token token) const {
+        return std::lower_bound(entries.begin(), entries.end(), token,
+            [](const value_type & entry, const llama_token t) { return entry.first < t; });
+    }
+};
 
 // n-gram -> empirical distribution of following tokens
 // A segmented map grows in fixed-size blocks, so loading a large cache never holds two copies of its entries.
