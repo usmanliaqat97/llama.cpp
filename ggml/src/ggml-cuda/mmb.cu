@@ -65,15 +65,23 @@ __device__ __forceinline__ float mmb_h2f(uint16_t h) { return (float) __builtin_
 __device__ __forceinline__ v8f mmb_wmma_bf16(mmb_frag_t a, mmb_frag_t b, v8f c) {
 #if defined(RDNA4)
     return __builtin_amdgcn_wmma_f32_16x16x16_bf16_w32_gfx12(__builtin_bit_cast(mmb_bf16_frag_t, a), __builtin_bit_cast(mmb_bf16_frag_t, b), c);
-#else
+#elif defined(RDNA3)
     return __builtin_amdgcn_wmma_f32_16x16x16_bf16_w32(a, b, c);
+#else
+    // no WMMA on this target (e.g. gfx103x in a multi-target build): compile only, mmb_enabled() keeps it off
+    (void) a; (void) b;
+    return c;
 #endif
 }
 __device__ __forceinline__ v8f mmb_wmma_f16(mmb_frag_t a, mmb_frag_t b, v8f c) {
 #if defined(RDNA4)
     return __builtin_amdgcn_wmma_f32_16x16x16_f16_w32_gfx12(__builtin_bit_cast(mmb_f16_frag_t, a), __builtin_bit_cast(mmb_f16_frag_t, b), c);
-#else
+#elif defined(RDNA3)
     return __builtin_amdgcn_wmma_f32_16x16x16_f16_w32(a, b, c);
+#else
+    // no WMMA on this target (e.g. gfx103x in a multi-target build): compile only, mmb_enabled() keeps it off
+    (void) a; (void) b;
+    return c;
 #endif
 }
 
@@ -1679,6 +1687,17 @@ bool mmb_enabled() {
     // GGML_CUDA_MMB_RDNA3=0 disables the RDNA3_0 arm.
     const int cc = ggml_cuda_info().devices[0].cc;
     static const bool allow_rdna3 = getenv("GGML_CUDA_MMB_RDNA3") ? atoi(getenv("GGML_CUDA_MMB_RDNA3")) != 0 : true;
+    // The policy is global (taken from device 0) but the kernels run on whichever device holds the op, so a
+    // mixed setup (e.g. gfx1101 + gfx1031) must not enable them: every visible device needs the WMMA builtins.
+    static const bool all_wmma = [] {
+        const ggml_cuda_device_info & info = ggml_cuda_info();
+        for (int i = 0; i < info.device_count; i++) {
+            const int c = info.devices[i].cc;
+            if (!(GGML_CUDA_CC_IS_RDNA3_0(c) || GGML_CUDA_CC_IS_RDNA3_5(c) || GGML_CUDA_CC_IS_RDNA4(c))) return false;
+        }
+        return true;
+    }();
+    if (!all_wmma) return false;
     if (GGML_CUDA_CC_IS_RDNA3_5(cc) || GGML_CUDA_CC_IS_RDNA4(cc) || (allow_rdna3 && GGML_CUDA_CC_IS_RDNA3_0(cc))) { mmb_cfg_dump_once(); return true; }
     return false;
 }

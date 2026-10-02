@@ -608,6 +608,17 @@ bool ggml_cuda_should_use_mmq(enum ggml_type type, int cc, int64_t ne11, int64_t
                 return true;
             }
 
+            // The hipBLAS path dequantizes each weight matrix to an F16 buffer that the pool then keeps
+            // (170 MiB for a 5120x17408 FFN matrix, per context), which is VRAM a tight setup would
+            // rather spend on KV cache. GGML_CUDA_RDNA3_FORCE_MMQ=1 keeps these types on MMQ at any batch size.
+            static const bool force_mmq = [] {
+                const char * env = getenv("GGML_CUDA_RDNA3_FORCE_MMQ");
+                return env != nullptr && atoi(env) != 0;
+            }();
+            if (force_mmq) {
+                return true;
+            }
+
             // For some quantization types MMQ can have lower peak TOPS than hipBLAS
             //     so it's only faster for sufficiently small batch sizes:
             switch (type) {

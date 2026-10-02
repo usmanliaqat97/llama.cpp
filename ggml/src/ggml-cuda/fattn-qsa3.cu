@@ -64,8 +64,12 @@ static __device__ __forceinline__ float qsa3_h2f(const uint16_t h) { return (flo
 static __device__ __forceinline__ v8f qsa3_wmma_f16(const qsa3_frag_t a, const qsa3_frag_t b, const v8f c) {
 #if defined(RDNA4)
     return __builtin_amdgcn_wmma_f32_16x16x16_f16_w32_gfx12(a, b, c);
-#else
+#elif defined(RDNA3)
     return __builtin_amdgcn_wmma_f32_16x16x16_f16_w32(a, b, c);
+#else
+    // no WMMA on this target (e.g. gfx103x in a multi-target build): compile only, never launched (see the gate above)
+    (void) a; (void) b;
+    return c;
 #endif
 }
 
