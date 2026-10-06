@@ -2596,6 +2596,10 @@ size_t llama_model::max_host_weight_tensor_bytes() const {
             if (ggml_backend_buffer_get_usage(t->buffer) != GGML_BACKEND_BUFFER_USAGE_WEIGHTS) {
                 continue;
             }
+            // input tables are read with GET_ROWS on the host and are never op-offloaded, so they never go through the ring
+            if (t == tok_embd || t == type_embd || t == pos_embd || t == per_layer_tok_embd) {
+                continue;
+            }
             const size_t bytes = ggml_nbytes(t);
             if (bytes > max_bytes) {
                 max_bytes = bytes;
