@@ -3313,12 +3313,20 @@ int llama_context::decode(const llama_batch_ext & batch_inp) {
         // outputs (a prompt chunk that does not end its prompt), so they need the same wait there: the next ubatch's input
         // upload waits only for this graph's compute, not for the copies queued after it, and was observed (Windows, ROCm)
         // to overwrite a layer input before its copy had read it.
+        // LLAMA_PROMPT_READBACK_SYNC=0 skips that second wait (a ubatch without outputs whose per-token readbacks only
+        // feed a drafter, which the target verifies): under -sm layer the readback tensors live on the last device, so
+        // waiting for it after every prompt ubatch stops the devices overlapping (2 GPUs, MTP, -ub 128: prompt -22%).
+        // The wait for ubatches with outputs is unchanged.
         static const bool readback_sync = getenv("GGML_READBACK_SYNC") == nullptr || atoi(getenv("GGML_READBACK_SYNC")) != 0;
         // F1 (issue #240): with the in-graph stores there is no layer-input readback to order (the copy that needed
         // it no longer exists, and syncing the device once per ubatch would serialize a multi-ubatch prefill) -
         // except for an embedding ubatch, which fills the host rows the draft reads.
         const bool layer_inp_host = layer_inp_read && layer_inp_host_fill;
-        if (readback_sync && (n_outputs > 0 || layer_inp_host || nextn_read)) {
+        static const bool prompt_readback_sync = [] {
+            const char * e = getenv("LLAMA_PROMPT_READBACK_SYNC");
+            return e == nullptr || atoi(e) != 0;
+        }();
+        if (readback_sync && (n_outputs > 0 || ((layer_inp_host || nextn_read) && prompt_readback_sync))) {
             sync_readback(t_logits);
             sync_readback(t_embd);
             sync_readback(t_h_nextn);
